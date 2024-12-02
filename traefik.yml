@@ -1,0 +1,15 @@
+entryPoints:
+  web:
+    address: ":80"
+
+providers:
+  docker: {}
+
+api:
+  insecure: true
+
+experimental:
+  plugins:
+    traefik-maintenance:
+      moduleName: "github.com/TRIMM/traefik-maintenance"
+      version: "v1.0.1"
