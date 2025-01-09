@@ -5,25 +5,35 @@ services:
     image: traefik:v2.10
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock"
-      - "./traefik.yml:/etc/traefik/traefik.yml"  # Traefik configuration
+      - "./traefik.yml:/etc/traefik/traefik.yml"
       - "./maintenance:/maintenance"
     ports:
       - "80:80"
-      - "8080:8080"  # Traefik dashboard
+      - "8080:8080"
     labels:
-      # Define middleware for the maintenance plugin
+      # Maintenance Plugin Middleware
       - "traefik.http.middlewares.maintenance-plugin.plugin.traefik-maintenance.enabled=true"
       - "traefik.http.middlewares.maintenance-plugin.plugin.traefik-maintenance.filename=/maintenance/maintenance.html"
       - "traefik.http.middlewares.maintenance-plugin.plugin.traefik-maintenance.triggerFilename=/maintenance/maintenance.trigger"
       - "traefik.http.middlewares.maintenance-plugin.plugin.traefik-maintenance.httpResponseCode=503"
       - "traefik.http.middlewares.maintenance-plugin.plugin.traefik-maintenance.httpContentType=text/html; charset=utf-8"
 
-  # Web application service
+      # IP Whitelist Middleware
+      - "traefik.http.middlewares.ip-whitelist.ipwhitelist.sourcerange=172.21.143.146/32"
+
   webapp:
     image: nginx:alpine
     labels:
+      # Enable Traefik for this service
       - "traefik.enable=true"
-      - "traefik.http.routers.webapp.rule=Host(`webapp.172.31.105.210.nip.io`)"
-      - "traefik.http.routers.webapp.entrypoints=web"
-      # Attach maintenance-plugin middleware
-      - "traefik.http.routers.webapp.middlewares=maintenance-plugin"
+
+      # Router for whitelisted IPs
+      - "traefik.http.routers.webapp-whitelist.rule=Host(`webapp.172.21.143.146.nip.io`) && ClientIP(`172.21.143.146`)"
+      - "traefik.http.routers.webapp-whitelist.entrypoints=web"
+      - "traefik.http.routers.webapp-whitelist.middlewares=ip-whitelist"
+
+      # Router for other IPs (general traffic)
+      - "traefik.http.routers.webapp-default.rule=Host(`webapp.172.21.143.146.nip.io`)"
+      - "traefik.http.routers.webapp-default.entrypoints=web"
+      - "traefik.http.routers.webapp-default.middlewares=maintenance-plugin"
+
